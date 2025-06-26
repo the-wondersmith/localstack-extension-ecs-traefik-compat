@@ -1,0 +1,38 @@
+[project]
+name = "localstack-extension-ecs-traefik-compat"
+version = "0.0.1"
+description = "LocalStack Extension: localstack-extension-ecs-traefik-compat"
+readme = { file = "README.md", content-type = "text/markdown" }
+requires-python = ">=3.11"
+license = "AGPL-3.0-or-later"
+authors = [
+    { name = "Mark S.", email = "the@wondersmith.io" }
+]
+keywords = ["localstack", "localstack-extension", "extension"]
+classifiers = []
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/the-wondersmith/localstack-extension-ecs-traefik-compat"
+
+[project.entry-points."localstack.extensions"]
+localstack_ecs_traefik_compat = "localstack_extension_ecs_traefik_compat.extension:EcsTraefikCompatExt"
+
+[build-system]
+build-backend = "hatchling.build"
+requires = [
+    "plux>=1.3",
+    "hatchling==1.26.3",
+    "wheel",
+]
+
+[tool.rye]
+managed = true
+
+[dependency-groups]
+dev = [
+    "localstack[runtime]>=4.1",
+    "localstack-core>=4.1",
+    "plux>=1.3",
+    "rolo>=0.7",
+]

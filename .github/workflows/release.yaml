@@ -1,0 +1,107 @@
+---
+name: Build Wheel For Release
+
+on:
+  release:
+    types:
+      - created
+
+  workflow_dispatch:
+    inputs:
+      publish:
+        type: boolean
+        default: false
+        required: false
+        description: >-
+          Push built wheels to PyPI
+      release:
+        type: boolean
+        default: false
+        required: false
+        description: >-
+          Create a new release with the built artifacts
+      release-tag:
+        type: string
+        default: ""
+        required: false
+        description: >-
+          The tag to create a new release for
+
+permissions: write-all
+
+jobs:
+  build:
+    name: Build Python Wheel
+    runs-on: ubuntu-latest
+    outputs:
+      wheel-version: ${{ steps.parse.outputs.version }}
+    steps:
+      - id: install
+        name: Install Rye
+        shell: bash
+        env:
+          RYE_INSTALL_OPTION: --yes
+        run: >-
+          curl -sSf https://rye.astral.sh/get | bash
+          && source "${HOME}/.rye/env"
+          && echo "PATH=${PATH}" >> "${GITHUB_ENV}"
+
+      - id: checkout
+        name: Checkout
+        uses: actions/checkout@v4
+
+      - id: parse
+        name: Parse Wheel Version
+        shell: bash
+        run: >-
+          echo "version=$(cat pyproject.toml | yq -p toml '.project.version')" >> "${GITHUB_OUTPUT}"
+
+      - id: build
+        name: Build Python Wheel
+        shell: bash
+        run: >-
+          mkdir -p ${{ github.workspace }}/artifacts
+          && rye build --clean --out ${{ github.workspace }}/artifacts/
+
+      - id: upload
+        name: Upload Wheel Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          overwrite: true
+          retention-days: 1
+          compression-level: 0
+          if-no-files-found: error
+          name: localstack_extension_ecs_traefik_compat-${{ steps.parse.outputs.version }}
+          path: ${{ github.workspace }}/artifacts/localstack_extension_ecs_traefik_compat-${{ steps.parse.outputs.version }}*
+
+      - id: publish
+        name: Publish Wheel To PyPI
+        shell: bash
+        if: ${{ inputs.publish || startsWith(github.ref, 'refs/tags/') }}
+        run: >-
+          if [[ -z "${{ secrets.PYPI_TOKEN }}" ]]; then echo 'Empty PYPI_TOKEN secret' && exit 1; fi
+          && rye publish --yes --skip-existing --token ${{ secrets.PYPI_TOKEN }}
+          ${{ github.workspace }}/artifacts/localstack_extension_ecs_traefik_compat-*
+
+  release:
+    name: Marshal & Upload Release Artifacts
+    runs-on: ubuntu-latest
+    if: ${{ startsWith(github.ref, 'refs/tags/') || (inputs.release && inputs.release-tag) }}
+    needs:
+      - build
+    steps:
+      - id: download-artifacts
+        name: Download Run Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+          path: ${{ github.workspace }}/artifacts
+      - id: release-artifacts
+        name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          make_latest: true
+          fail_on_unmatched_files: true
+          tag_name: ${{ inputs.release-tag || github.ref_name }}
+          files: |
+            ${{ github.workspace }}/artifacts/*

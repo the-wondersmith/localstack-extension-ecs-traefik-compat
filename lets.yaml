@@ -1,0 +1,25 @@
+---
+version: 0.0.55
+
+shell: bash
+
+commands:
+  start-localstack:
+    description: >-
+      Start LocalStack and auto-install the extension from the local disk
+    env:
+      LOCALSTACK_DEBUG: 1
+      LOCALSTACK_ACTIVATE_PRO: 1
+      LOCALSTACK_IMAGE_TAG: latest
+      LOCALSTACK_EXTENSION_DEV_MODE: 1
+      LOCALSTACK_ECS_REMOVE_CONTAINERS: 1
+      LOCALSTACK_EXTENSION_AUTO_INSTALL: >-
+        /tmp/ecs-traefik-compat-ext,localstack-extension-terraform-init
+    cmd: >-
+      localstack start
+      --env='SHUTDOWN_TIMEOUT=90'
+      --env='TERRAFORM_VERSION=1.9.5'
+      --env='AWS_DEFAULT_REGION=eu-west-2'
+      --volume="${LETS_CONFIG_DIR}/src:/tmp/ecs-traefik-compat-ext/src"
+      --volume="${LETS_CONFIG_DIR}/init.tf:/etc/localstack/init/ready.d/main.tf"
+      --volume="${LETS_CONFIG_DIR}/pyproject.toml:/tmp/ecs-traefik-compat-ext/pyproject.toml"
